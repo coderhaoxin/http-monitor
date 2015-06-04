@@ -77,6 +77,7 @@ function Client(config) {
   }
 
   this.config = config;
+  this._clients = [];
 }
 
 Client.prototype.connect = function() {
@@ -96,7 +97,13 @@ Client.prototype.connect = function() {
       if (error) {
         return reject(error);
       }
+
       delete self._connect;
+      self._clients.push(self._client);
+      setImmediate(function() {
+        self.release();
+      });
+
       resolve();
     });
   });
@@ -124,6 +131,17 @@ Client.prototype.query = function() {
   });
 };
 
-Client.prototype.end = function() {
-  this._client.end();
+Client.prototype.release = function(force) {
+  let self = this;
+
+  if (force && this._client) {
+    this._client.end();
+  }
+
+  this._clients.forEach(function(client, index) {
+    if (force || client.queryQueue.length === 0) {
+      client.end();
+      self._clients.splice(index, 1);
+    }
+  });
 };

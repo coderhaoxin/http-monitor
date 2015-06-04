@@ -39,10 +39,6 @@ let client = pg.Client('postgres://username:password@localhost/database')
 client.query('SELECT ...')
   .then(...)
   .catch(...)
-
-// ...
-
-client.end()
 ```
 
 ### License

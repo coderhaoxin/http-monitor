@@ -34,7 +34,6 @@ describe('## pg-then', function() {
         .then(function(result) {
           assert.equal(result.rowCount, 1);
           assert.equal(result.rows[0].count, 1);
-          client.end();
         });
     });
 
@@ -43,8 +42,44 @@ describe('## pg-then', function() {
         .then(function(result) {
           assert.equal(result.rowCount, 1);
           assert.equal(result.rows[0].count, 1);
-          client.end();
         });
+    });
+
+    it('query', function() {
+      function query(sql, delay) {
+        return new Promise(function(resolve, reject) {
+          setTimeout(function() {
+            client.query(sql)
+              .then(resolve, reject);
+          }, delay);
+        });
+      }
+
+      return Promise.all([
+        client.query('SELECT 1 AS count, pg_sleep(0.3)'),
+        client.query('SELECT 1 AS count'),
+        query('SELECT 1 AS count, pg_sleep(0.3)', 500),
+        query('SELECT 1 AS count', 500),
+        query('SELECT 1 AS count, pg_sleep(0.3)', 1000),
+        query('SELECT 1 AS count', 1000)
+      ])
+      .then(function(results) {
+        assert.equal(results.length, 6);
+        assert.equal(client._clients.length, 1);
+
+        results.forEach(function(result) {
+          assert.equal(result.rows[0].count, 1);
+        });
+
+        client.release(true);
+
+        return new Promise(function(resolve) {
+          setTimeout(resolve, 100);
+        });
+      })
+      .then(function() {
+        assert.equal(client._clients.length, 0);
+      });
     });
   });
 
