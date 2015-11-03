@@ -5,6 +5,7 @@ let slice = [].slice;
 
 exports.Client = Client;
 exports.Pool = Pool;
+exports.pg = pg;
 
 /**
  * Pool
