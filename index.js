@@ -1,6 +1,8 @@
 
 'use strict'
 
+const PassThrough = require('stream').PassThrough
+const QueryStream = require('pg-query-stream')
 const pg = require('pg')
 const slice = [].slice
 
@@ -58,6 +60,36 @@ Pool.prototype.query = function() {
   })
 }
 
+Pool.prototype.stream = function(text, value, options) {
+  const stream = new PassThrough({
+    objectMode: true
+  })
+
+  this.connect().then(pool => {
+    const query = new QueryStream(text, value, options)
+    const source = pool.client.query(query)
+    source.on('end', cleanup)
+    source.on('error', onError)
+    source.on('close', cleanup)
+    source.pipe(stream)
+
+    function onError(err) {
+      source.emit('error', err)
+      cleanup()
+    }
+
+    function cleanup() {
+      pool.done()
+
+      source.removeListener('end', cleanup)
+      source.removeListener('error', onError)
+      source.removeListener('close', cleanup)
+    }
+  }).catch(err => stream.emit('error', err))
+
+  return stream
+}
+
 /**
  * Client
  */
@@ -90,6 +122,34 @@ Client.prototype.query = function() {
 
     this._client.query.apply(this._client, args)
   })
+}
+
+Client.prototype.stream = function(text, value, options) {
+  const stream = new PassThrough({
+    objectMode: true
+  })
+
+  const query = new QueryStream(text, value, options)
+  const source = this._client.query(query)
+  source.on('end', cleanup)
+  source.on('error', onError)
+  source.on('close', cleanup)
+  source.pipe(stream)
+
+  function onError(err) {
+    stream.emit('error', err)
+    cleanup()
+  }
+
+  function cleanup() {
+    pool.done()
+
+    source.removeListener('end', cleanup)
+    source.removeListener('error', onError)
+    source.removeListener('close', cleanup)
+  }
+
+  return stream
 }
 
 Client.prototype.end = function() {
