@@ -35,6 +35,18 @@ describe('## pg-then', () => {
           assert.equal(result.rows[0].count, 1)
         })
     })
+
+    it('stream', done => {
+      let rows = 0
+      return pg.Pool(config)
+        .stream('SELECT 1 AS count')
+        .on('data', data => {
+          rows++
+          assert(rows === 1)
+        })
+        .on('end', () => done())
+        .on('error', err => done(err))
+    })
   })
 
   describe('# Client', () => {
@@ -61,6 +73,18 @@ describe('## pg-then', () => {
           assert.equal(result.rows[0].count, 1)
           client.end()
         })
+    })
+
+    it('stream', done => {
+      let rows = 0
+      return client
+        .stream('SELECT 1 AS count')
+        .on('data', data => {
+          rows++
+          assert(rows === 1)
+        })
+        .on('end', () => done())
+        .on('error', err => done(err))
     })
   })
 })

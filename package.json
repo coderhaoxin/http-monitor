@@ -25,5 +25,8 @@
     "istanbul": "0",
     "mocha": "2",
     "pg": "4"
+  },
+  "dependencies": {
+    "pg-query-stream": "^0.7.0"
   }
 }
