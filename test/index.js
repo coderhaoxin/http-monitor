@@ -47,6 +47,20 @@ describe('## pg-then', () => {
         .on('end', () => done())
         .on('error', err => done(err))
     })
+
+    it('stream error on non existent table', done => {
+      return pg.Pool(config)
+        .stream('SELECT * FROM not_a_table')
+        .on('data', () => assert.fail('there should be no data') )
+        .on('end', () => {
+          assert.fail('there should be no end')
+          done()
+        })
+        .on('error', err => {
+          assert.equal(err.message, 'relation "not_a_table" does not exist')
+          done()
+        })
+    })
   })
 
   describe('# Client', () => {

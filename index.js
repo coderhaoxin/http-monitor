@@ -74,7 +74,7 @@ Pool.prototype.stream = function(text, value, options) {
     source.pipe(stream)
 
     function onError(err) {
-      source.emit('error', err)
+      stream.emit('error', err)
       cleanup()
     }
 
