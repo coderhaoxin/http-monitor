@@ -58,6 +58,10 @@ client
 client.end()
 ```
 
+### Extras
+
+* [jadbox/pg-rxjs](https://github.com/jadbox/pg-rxjs) combining PostgreSQL and Rx for Node
+
 ### License
 MIT
 
