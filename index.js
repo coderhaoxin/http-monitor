@@ -1,6 +1,3 @@
-
-'use strict'
-
 const PassThrough = require('stream').PassThrough
 const QueryStream = require('pg-query-stream')
 const pg = require('pg')
