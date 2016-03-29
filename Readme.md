@@ -58,6 +58,36 @@ client
 client.end()
 ```
 
+* Transactions
+
+  _Note: only the `query` method is available in transactions. Streaming is not
+  supported._
+
+  ```js
+  const pg = require('pg-then')
+
+  const pool = pg.Pool('postgres://username:password@localhost/database')
+
+  pool.transactional(tx => {
+      return tx.query('UPDATE account SET value = value + 10 WHERE id = 42185')
+        .then(() => {
+          return tx.query('UPDATE account SET value = value - 10 WHERE id = 20985')
+        })
+    })
+    .then(...)
+    .catch(...)
+
+  // or
+
+  pool.transactional(tx => {
+      const inc = tx.query('UPDATE account SET value = value + 10 WHERE id = 42185')
+      const dec = tx.query('UPDATE account SET value = value - 10 WHERE id = 20985')
+      return Promise.all([inc, dec])
+    })
+    .then(...)
+    .catch(...)
+  ```
+
 ### Extras
 
 * [jadbox/pg-rxjs](https://github.com/jadbox/pg-rxjs) combining PostgreSQL and Rx for Node

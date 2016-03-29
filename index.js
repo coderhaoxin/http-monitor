@@ -9,6 +9,7 @@ const slice = [].slice
 module.exports = {
   Client,
   Pool,
+  transactional,
   pg
 }
 
@@ -90,6 +91,29 @@ Pool.prototype.stream = function(text, value, options) {
   return stream
 }
 
+Pool.prototype.transactional = function(fn) {
+  return this.connect().then((pool) => {
+    function query() {
+      let args = slice.call(arguments)
+      return new Promise((resolve, reject) => {
+        const cb = (error, result) => {
+          if (error) {
+            reject(error)
+          } else {
+            resolve(result)
+          }
+        }
+
+        args.push(cb)
+
+        pool.client.query.apply(pool.client, args)
+      })
+    }
+
+    return transactional(query, pool.done, fn)
+  })
+}
+
 /**
  * Client
  */
@@ -150,6 +174,90 @@ Client.prototype.stream = function(text, value, options) {
   return stream
 }
 
+Client.prototype.transactional = function(fn) {
+  let that = this
+
+  function query() {
+    const args = slice.call(arguments)
+
+    return new Promise((resolve, reject) => {
+      const cb = (error, result) => {
+        if (error) {
+          reject(error)
+        } else {
+          resolve(result)
+        }
+      }
+
+      args.push(cb)
+
+      that._client.query.apply(that._client, args)
+    })
+  }
+
+  return transactional(query, () => {}, fn)
+}
+
 Client.prototype.end = function() {
   this._client.end()
+}
+
+/**
+ * transactional
+ */
+function transactional(query, done, work) {
+  const tx = new Transaction(query, done)
+  return tx.begin()
+    .then(() => {
+      const res = work(tx)
+      return Promise.resolve(res)
+    })
+    .then(
+      res => {
+        let p = Promise.resolve()
+        if (!tx._committed && !tx._rolledBack) {
+          p = tx.commit()
+        }
+        return p
+          .then(() => done())
+          .then(() => Promise.resolve(res))
+      },
+      err => {
+        let p = Promise.resolve()
+        if (!tx._committed && !tx._rolledBack) {
+          p = tx.rollback()
+        }
+        return p
+          .then(() => done())
+          .then(() => Promise.reject(err))
+      }
+    )
+}
+
+/**
+ * Transaction
+ */
+function Transaction(query) {
+  if (!(this instanceof Transaction)) {
+    return new Transaction(query)
+  }
+
+  this._query = query
+  this._committed = false
+  this._rolledBack = false
+}
+Transaction.prototype.query = function() {
+  const args = slice.call(arguments)
+  return this._query.apply(null, args)
+}
+Transaction.prototype.begin = function() {
+  return this.query('BEGIN')
+}
+Transaction.prototype.commit = function() {
+  this._committed = true
+  return this.query('COMMIT')
+}
+Transaction.prototype.rollback = function() {
+  this._rolledBack = true
+  return this.query('ROLLBACK')
 }
